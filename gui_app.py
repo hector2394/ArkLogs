@@ -242,13 +242,14 @@ class MainWindow(ctk.CTk):
     # ── UI BUILD ─────────────────────────────────────────────────────────────
 
     def _build_ui(self):
+        # Bottom items MUST be packed FIRST in tkinter so they anchor correctly
+        self._build_status_bar()    # side="bottom" → sticks to very bottom
+        self._build_start_button()  # side="bottom" → sticks above status bar
+        # Top items packed after — they fill down from the top
         self._build_header()
         self._build_mode_section()
         self._build_category_section()
         self._build_action_bar()
-        # Pack bottom-anchored items first so they're always visible
-        self._build_status_bar()
-        self._build_start_button()
         # Log fills whatever space remains in the middle
         self._build_log_section()
 
