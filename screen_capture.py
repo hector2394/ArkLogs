@@ -39,15 +39,25 @@ class RegionSelector:
         self.region = None
         self._has_parent = parent is not None
 
+        # Get full virtual screen bounds (works with multiple monitors)
+        with mss.mss() as sct:
+            all_monitors = sct.monitors[0]  # index 0 = combined bounding box
+            self._screen_left = all_monitors["left"]
+            self._screen_top = all_monitors["top"]
+            screen_w = all_monitors["width"]
+            screen_h = all_monitors["height"]
+
         if self._has_parent:
             self.root = tk.Toplevel(parent)
         else:
             self.root = tk.Tk()
-        self.root.attributes("-fullscreen", True)
+
+        # Cover the entire virtual screen manually (works for all monitors)
+        self.root.geometry(f"{screen_w}x{screen_h}+{self._screen_left}+{self._screen_top}")
+        self.root.overrideredirect(True)   # no title bar / borders
         self.root.attributes("-alpha", 0.3)
         self.root.attributes("-topmost", True)
         self.root.configure(bg="black")
-        self.root.title("Select Tribe Log Region")
 
         self.canvas = tk.Canvas(
             self.root,
@@ -107,7 +117,12 @@ class RegionSelector:
             )
             return
 
-        self.region = {"left": x1, "top": y1, "width": width, "height": height}
+        self.region = {
+            "left":   x1 + self._screen_left,
+            "top":    y1 + self._screen_top,
+            "width":  width,
+            "height": height,
+        }
         self.root.destroy()
 
     def select(self):

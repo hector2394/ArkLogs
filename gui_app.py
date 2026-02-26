@@ -246,8 +246,10 @@ class MainWindow(ctk.CTk):
         self._build_mode_section()
         self._build_category_section()
         self._build_action_bar()
-        self._build_start_button()
+        # Pack bottom-anchored items first so they're always visible
         self._build_status_bar()
+        self._build_start_button()
+        # Log fills whatever space remains in the middle
         self._build_log_section()
 
     def _build_header(self):
@@ -385,12 +387,12 @@ class MainWindow(ctk.CTk):
             corner_radius=10,
             command=self._toggle_monitor,
         )
-        self._start_btn.pack(fill="x", padx=14, pady=(4, 6))
+        self._start_btn.pack(fill="x", padx=14, pady=(4, 6), side="bottom")
 
     def _build_status_bar(self):
         bar = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=8,
                            border_width=1, border_color=C["border"], height=34)
-        bar.pack(fill="x", padx=14, pady=(0, 4))
+        bar.pack(fill="x", padx=14, pady=(0, 4), side="bottom")
         bar.pack_propagate(False)
 
         self._status_dot = ctk.CTkLabel(bar, text="●", font=("Arial", 14), text_color=C["muted"])
