@@ -140,6 +140,11 @@ class SettingsDialog(ctk.CTkToplevel):
             "my-tribe-ark-2024",
             cfg.get("ntfy", {}).get("topic", "ark-raid-alert"),
         )
+        self._ntfy_token = field(
+            "Access Token  (optional — for private topics)",
+            "tk_xxxxxxxxxxxx",
+            cfg.get("ntfy", {}).get("token", ""),
+        )
 
         # Timing
         _section_label(scroll, "  TIMING")
@@ -192,6 +197,7 @@ class SettingsDialog(ctk.CTkToplevel):
         ids_raw = self._chat_ids.get().strip()
         cfg["telegram"]["chat_ids"] = [x.strip() for x in ids_raw.split(",") if x.strip()]
         cfg["ntfy"]["topic"] = self._ntfy_topic.get().strip()
+        cfg["ntfy"]["token"] = self._ntfy_token.get().strip()
         try:
             cfg["resend_interval"] = int(self._resend.get().strip())
         except ValueError:
@@ -361,10 +367,10 @@ class MainWindow(ctk.CTk):
         ).pack(side="left")
 
         ctk.CTkButton(
-            bar, text="✅  ACK All",
+            bar, text="✅  Dismiss All",
             fg_color=C["green_dk"], hover_color=C["green"],
             text_color="#000", font=("Arial", 12, "bold"),
-            height=34, width=110,
+            height=34, width=120,
             command=self._ack_all,
         ).pack(side="right")
 
@@ -600,7 +606,7 @@ class MainWindow(ctk.CTk):
         self.after(300, self._do_select_region)
 
     def _do_select_region(self):
-        region = select_region()
+        region = select_region(parent=self)
         self.deiconify()
         if region:
             self._log(f"[Region] Selected: {region}", color=C["green"])

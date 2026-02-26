@@ -42,6 +42,7 @@ class Notifier:
         self._ntfy_server = ntfy_cfg.get("server", "https://ntfy.sh")
         self._ntfy_topic = ntfy_cfg.get("topic", "ark-raid-alert")
         self._ntfy_priority = ntfy_cfg.get("priority", "urgent")
+        self._ntfy_token = ntfy_cfg.get("token", "")
 
     def reload_config(self):
         """Recarga credenciales desde config (útil cuando el usuario las cambia en la GUI)."""
@@ -52,6 +53,7 @@ class Notifier:
         self._ntfy_server = ntfy_cfg.get("server", "https://ntfy.sh")
         self._ntfy_topic = ntfy_cfg.get("topic", "ark-raid-alert")
         self._ntfy_priority = ntfy_cfg.get("priority", "urgent")
+        self._ntfy_token = ntfy_cfg.get("token", "")
 
         if TELEGRAM_AVAILABLE and self._tg_token:
             try:
@@ -95,16 +97,19 @@ class Notifier:
 
     def _send_ntfy(self, alert: Alert):
         url = f"{self._ntfy_server}/{self._ntfy_topic}"
+        headers = {
+            "Title": alert.format_ntfy_title(),
+            "Priority": self._ntfy_priority,
+            "Tags": "rotating_light,skull",
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        if self._ntfy_token:
+            headers["Authorization"] = f"Bearer {self._ntfy_token}"
         try:
             requests.post(
                 url,
                 data=alert.format_ntfy_message().encode("utf-8"),
-                headers={
-                    "Title": alert.format_ntfy_title(),
-                    "Priority": self._ntfy_priority,
-                    "Tags": "rotating_light,skull",
-                    "Content-Type": "text/plain; charset=utf-8",
-                },
+                headers=headers,
                 timeout=10,
             )
         except Exception as e:
