@@ -6,6 +6,7 @@ import json
 import os
 import requests
 import threading
+from urllib.parse import quote
 from alert_detector import Alert
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
@@ -98,7 +99,7 @@ class Notifier:
     def _send_ntfy(self, alert: Alert):
         url = f"{self._ntfy_server}/{self._ntfy_topic}"
         headers = {
-            "Title": alert.format_ntfy_title(),
+            "Title": quote(alert.format_ntfy_title()),
             "Priority": self._ntfy_priority,
             "Tags": "rotating_light,skull",
             "Content-Type": "text/plain; charset=utf-8",
