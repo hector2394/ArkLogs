@@ -216,8 +216,8 @@ class MainWindow(ctk.CTk):
         super().__init__()
 
         self.title("ARK Raid Monitor")
-        self.geometry("460x620")
-        self.minsize(400, 520)
+        self.geometry("460x780")
+        self.minsize(400, 650)
         self.resizable(True, True)
         self.configure(fg_color=C["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_close)
