@@ -19,22 +19,40 @@ from tray_icon import TrayIcon
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
-# Apariencia
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-CATEGORY_LABELS = {
-    "raid":         ("💥 Raid Alert",     "Estructuras destruidas / demolidas"),
-    "dinos_killed": ("🦖 Dinos Killed",   "Tus dinos matados por enemigos"),
-    "starving":     ("🍖 Starving Dinos", "Dinos muriendo de hambre"),
-    "insiding":     ("🐍 Insiding",       "Demoliciones/unclaims masivos, expulsiones"),
-    "player_killed":("💀 Player Killed",  "Jugador de la tribu muerto"),
+# ── Paleta de colores ─────────────────────────────────────────────────────────
+C = {
+    "bg":          "#0d1117",
+    "surface":     "#161b22",
+    "surface2":    "#21262d",
+    "border":      "#30363d",
+    "text":        "#e6edf3",
+    "muted":       "#7d8590",
+    "red":         "#f85149",
+    "red_dk":      "#da3633",
+    "orange":      "#e3b341",
+    "orange_dk":   "#bb8009",
+    "green":       "#3fb950",
+    "green_dk":    "#2ea043",
+    "blue":        "#388bfd",
+    "blue_dk":     "#1f6feb",
+    "purple":      "#bc8cff",
 }
 
-MODE_DESCRIPTIONS = {
-    "HARD":     "1 evento = alerta inmediata",
-    "MODERATE": "5 eventos acumulados = alerta",
-    "SOFT":     "20 eventos acumulados = alerta",
+CATEGORY_DATA = {
+    "raid":         ("💥", "Raid Alert",     "Estructuras destruidas o demolidas"),
+    "dinos_killed": ("🦖", "Dinos Killed",   "Tus dinos matados por enemigos"),
+    "starving":     ("🍖", "Starving Dinos", "Dinos muriendo de hambre"),
+    "insiding":     ("🐍", "Insiding",       "Demoliciones/unclaims masivos, expulsiones"),
+    "player_killed":("💀", "Player Killed",  "Jugador de la tribu eliminado"),
+}
+
+MODE_DATA = {
+    "HARD":     ("🔴", "HARD",     "1 evento",  "Alerta inmediata"),
+    "MODERATE": ("🟡", "MODERATE", "5 eventos", "Acumulado medio"),
+    "SOFT":     ("🟢", "SOFT",     "20 eventos","Solo raids serios"),
 }
 
 MAX_LOG_LINES = 200
@@ -50,65 +68,127 @@ def _save_config(cfg: dict):
         json.dump(cfg, f, indent=2)
 
 
+def _section_label(parent, text: str):
+    """Etiqueta de sección estilo uppercase muted."""
+    ctk.CTkLabel(
+        parent, text=text,
+        font=("Arial", 10, "bold"),
+        text_color=C["muted"],
+        anchor="w",
+    ).pack(fill="x", padx=16, pady=(14, 4))
+
+
+def _divider(parent):
+    ctk.CTkFrame(parent, height=1, fg_color=C["border"]).pack(fill="x", padx=0, pady=0)
+
+
 class SettingsDialog(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("⚙ Settings")
-        self.geometry("420x500")
+        self.title("Settings")
+        self.geometry("460x560")
         self.resizable(False, False)
+        self.configure(fg_color=C["bg"])
         self.grab_set()
         self.focus()
 
         cfg = _load_config()
 
-        pad = {"padx": 18, "pady": 6}
+        # ── Header ──
+        hdr = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=0, height=52)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text="⚙  Settings", font=("Arial", 15, "bold"),
+                     text_color=C["text"]).pack(side="left", padx=18)
 
-        ctk.CTkLabel(self, text="⚙  Configuración", font=("Arial", 16, "bold")).pack(pady=(18, 4))
+        scroll = ctk.CTkScrollableFrame(self, fg_color=C["bg"], scrollbar_button_color=C["surface2"])
+        scroll.pack(fill="both", expand=True, padx=0, pady=0)
+
+        def field(label, placeholder, value, show=""):
+            _section_label(scroll, label)
+            e = ctk.CTkEntry(
+                scroll, placeholder_text=placeholder,
+                fg_color=C["surface"], border_color=C["border"],
+                text_color=C["text"], placeholder_text_color=C["muted"],
+                height=36, show=show,
+            )
+            e.pack(fill="x", padx=16, pady=(0, 2))
+            if value:
+                e.insert(0, value)
+            return e
 
         # Telegram
-        ctk.CTkLabel(self, text="Telegram Bot Token", anchor="w").pack(fill="x", **pad)
-        self._tg_token = ctk.CTkEntry(self, width=380, placeholder_text="123456:ABCdef...")
-        self._tg_token.pack(**pad)
-        self._tg_token.insert(0, cfg.get("telegram", {}).get("token", ""))
+        _section_label(scroll, "  TELEGRAM")
+        ctk.CTkFrame(scroll, height=1, fg_color=C["border"]).pack(fill="x", padx=16)
 
-        ctk.CTkLabel(self, text="Chat IDs (separados por coma)", anchor="w").pack(fill="x", **pad)
-        self._chat_ids = ctk.CTkEntry(self, width=380, placeholder_text="123456789, 987654321")
-        self._chat_ids.pack(**pad)
-        self._chat_ids.insert(0, ", ".join(str(i) for i in cfg.get("telegram", {}).get("chat_ids", [])))
+        self._tg_token = field(
+            "Bot Token",
+            "123456789:ABCdefGhIjKlMnOpQrSt...",
+            cfg.get("telegram", {}).get("token", ""),
+        )
+        self._chat_ids = field(
+            "Chat IDs  (separados por coma)",
+            "123456789, 987654321",
+            ", ".join(str(i) for i in cfg.get("telegram", {}).get("chat_ids", [])),
+        )
 
         # ntfy
-        ctk.CTkLabel(self, text="ntfy Topic (nombre único para tu tribu)", anchor="w").pack(fill="x", **pad)
-        self._ntfy_topic = ctk.CTkEntry(self, width=380, placeholder_text="mi-tribu-ark-2024")
-        self._ntfy_topic.pack(**pad)
-        self._ntfy_topic.insert(0, cfg.get("ntfy", {}).get("topic", "ark-raid-alert"))
+        _section_label(scroll, "  NTFY.SH")
+        ctk.CTkFrame(scroll, height=1, fg_color=C["border"]).pack(fill="x", padx=16)
 
-        # Resend interval
-        ctk.CTkLabel(self, text="Re-envío si no hay ACK (segundos)", anchor="w").pack(fill="x", **pad)
-        self._resend = ctk.CTkEntry(self, width=380)
-        self._resend.pack(**pad)
-        self._resend.insert(0, str(cfg.get("resend_interval", 30)))
+        self._ntfy_topic = field(
+            "Topic  (nombre único para tu tribu)",
+            "mi-tribu-ark-2024",
+            cfg.get("ntfy", {}).get("topic", "ark-raid-alert"),
+        )
 
-        # Insiding thresholds
-        ctk.CTkLabel(self, text="Insiding – Demoliciones para alertar", anchor="w").pack(fill="x", **pad)
-        self._demo_count = ctk.CTkEntry(self, width=380)
-        self._demo_count.pack(**pad)
-        self._demo_count.insert(0, str(cfg.get("insiding", {}).get("demolition_count", 3)))
+        # Timing
+        _section_label(scroll, "  TIMING")
+        ctk.CTkFrame(scroll, height=1, fg_color=C["border"]).pack(fill="x", padx=16)
 
-        ctk.CTkLabel(self, text="Insiding – Ventana de tiempo demoliciones (minutos)", anchor="w").pack(fill="x", **pad)
-        self._demo_win = ctk.CTkEntry(self, width=380)
-        self._demo_win.pack(**pad)
-        self._demo_win.insert(0, str(cfg.get("insiding", {}).get("demolition_window_minutes", 2)))
+        self._resend = field(
+            "Re-envío sin ACK (segundos)",
+            "30",
+            str(cfg.get("resend_interval", 30)),
+        )
+
+        # Insiding
+        _section_label(scroll, "  INSIDING THRESHOLDS")
+        ctk.CTkFrame(scroll, height=1, fg_color=C["border"]).pack(fill="x", padx=16)
+
+        row2 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row2.pack(fill="x", padx=16, pady=(4, 0))
+
+        for label, val, attr in [
+            ("Demoliciones para alertar", str(cfg.get("insiding", {}).get("demolition_count", 3)), "_demo_count"),
+            ("Ventana (minutos)",         str(cfg.get("insiding", {}).get("demolition_window_minutes", 2)), "_demo_win"),
+        ]:
+            col = ctk.CTkFrame(row2, fg_color="transparent")
+            col.pack(side="left", expand=True, fill="x", padx=(0, 8))
+            ctk.CTkLabel(col, text=label, font=("Arial", 11), text_color=C["muted"], anchor="w").pack(fill="x")
+            e = ctk.CTkEntry(col, fg_color=C["surface"], border_color=C["border"],
+                             text_color=C["text"], height=34)
+            e.pack(fill="x")
+            e.insert(0, val)
+            setattr(self, attr, e)
 
         # Botones
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(pady=14, padx=18, fill="x")
-        ctk.CTkButton(btn_frame, text="Guardar", command=self._save, width=120).pack(side="right", padx=(8, 0))
-        ctk.CTkButton(btn_frame, text="Cancelar", command=self.destroy, width=120,
-                      fg_color="gray30", hover_color="gray20").pack(side="right")
+        foot = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=0, height=56)
+        foot.pack(fill="x", side="bottom")
+        foot.pack_propagate(False)
+        ctk.CTkButton(
+            foot, text="Guardar", command=self._save,
+            fg_color=C["blue"], hover_color=C["blue_dk"],
+            font=("Arial", 13, "bold"), width=120, height=36,
+        ).pack(side="right", padx=12, pady=10)
+        ctk.CTkButton(
+            foot, text="Cancelar", command=self.destroy,
+            fg_color=C["surface2"], hover_color=C["border"],
+            text_color=C["muted"], width=100, height=36,
+        ).pack(side="right", pady=10)
 
     def _save(self):
         cfg = _load_config()
-
         cfg["telegram"]["token"] = self._tg_token.get().strip()
         ids_raw = self._chat_ids.get().strip()
         cfg["telegram"]["chat_ids"] = [x.strip() for x in ids_raw.split(",") if x.strip()]
@@ -122,7 +202,6 @@ class SettingsDialog(ctk.CTkToplevel):
             cfg["insiding"]["demolition_window_minutes"] = int(self._demo_win.get().strip())
         except ValueError:
             pass
-
         _save_config(cfg)
         self.destroy()
 
@@ -131,9 +210,10 @@ class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("🛡 ARK Raid Monitor v1.0")
-        self.geometry("440x600")
+        self.title("ARK Raid Monitor")
+        self.geometry("460x700")
         self.resizable(False, False)
+        self.configure(fg_color=C["bg"])
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._monitor: MonitorThread | None = None
@@ -145,7 +225,6 @@ class MainWindow(ctk.CTk):
         self._build_ui()
         self._load_state_from_config()
 
-        # System tray
         self._tray = TrayIcon(
             on_show=self._show_window,
             on_ack_all=self._ack_all,
@@ -157,146 +236,193 @@ class MainWindow(ctk.CTk):
     # ── UI BUILD ─────────────────────────────────────────────────────────────
 
     def _build_ui(self):
-        # Header
-        header = ctk.CTkFrame(self, height=54, corner_radius=0, fg_color="#1a1a2e")
-        header.pack(fill="x")
-        header.pack_propagate(False)
-        ctk.CTkLabel(
-            header,
-            text="🛡  ARK RAID MONITOR",
-            font=("Arial", 18, "bold"),
-            text_color="#e94560",
-        ).pack(side="left", padx=16, pady=12)
-        ctk.CTkLabel(
-            header, text="v1.0", font=("Arial", 11), text_color="gray50"
-        ).pack(side="right", padx=14)
+        self._build_header()
+        self._build_mode_section()
+        self._build_category_section()
+        self._build_action_bar()
+        self._build_start_button()
+        self._build_status_bar()
+        self._build_log_section()
 
-        # Mode selector
-        mode_frame = ctk.CTkFrame(self, fg_color="#16213e", corner_radius=10)
-        mode_frame.pack(fill="x", padx=14, pady=(12, 4))
+    def _build_header(self):
+        hdr = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=0, height=68)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+
+        left = ctk.CTkFrame(hdr, fg_color="transparent")
+        left.pack(side="left", padx=18, pady=10)
+
         ctk.CTkLabel(
-            mode_frame, text="SENSITIVITY MODE", font=("Arial", 11, "bold"), text_color="gray60"
-        ).pack(anchor="w", padx=14, pady=(10, 4))
+            left, text="🛡  ARK RAID MONITOR",
+            font=("Arial", 20, "bold"), text_color=C["red"], anchor="w",
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            left, text="Real-time tribe log alert system",
+            font=("Arial", 11), text_color=C["muted"], anchor="w",
+        ).pack(anchor="w")
 
-        self._mode_var = tk.StringVar(value="HARD")
-        btn_row = ctk.CTkFrame(mode_frame, fg_color="transparent")
-        btn_row.pack(padx=14, pady=(0, 12), fill="x")
+        ctk.CTkLabel(
+            hdr, text="v1.0",
+            font=("Arial", 10), text_color=C["muted"],
+        ).pack(side="right", padx=16)
 
-        self._mode_buttons: dict[str, ctk.CTkButton] = {}
-        for mode, desc in MODE_DESCRIPTIONS.items():
-            col = ctk.CTkFrame(btn_row, fg_color="transparent")
-            col.pack(side="left", expand=True, fill="x", padx=4)
+        ctk.CTkFrame(self, height=1, fg_color=C["border"], corner_radius=0).pack(fill="x")
+
+    def _build_mode_section(self):
+        _section_label(self, "  SENSITIVITY MODE")
+
+        row = ctk.CTkFrame(self, fg_color="transparent")
+        row.pack(fill="x", padx=14, pady=(0, 6))
+
+        self._mode_buttons: dict[str, ctk.CTkFrame] = {}
+        self._mode_btn_widgets: dict[str, ctk.CTkButton] = {}
+
+        for mode, (dot, name, threshold, desc) in MODE_DATA.items():
+            card = ctk.CTkFrame(
+                row, fg_color=C["surface"], corner_radius=10,
+                border_width=2, border_color=C["border"],
+            )
+            card.pack(side="left", expand=True, fill="x", padx=5)
+
+            inner = ctk.CTkFrame(card, fg_color="transparent")
+            inner.pack(padx=12, pady=10, fill="x")
+
+            ctk.CTkLabel(inner, text=dot, font=("Arial", 22)).pack(anchor="w")
+            ctk.CTkLabel(inner, text=name, font=("Arial", 13, "bold"),
+                         text_color=C["text"]).pack(anchor="w", pady=(2, 0))
+            ctk.CTkLabel(inner, text=threshold, font=("Arial", 11, "bold"),
+                         text_color=C["muted"]).pack(anchor="w")
+            ctk.CTkLabel(inner, text=desc, font=("Arial", 10),
+                         text_color=C["muted"], wraplength=120).pack(anchor="w", pady=(2, 4))
+
             btn = ctk.CTkButton(
-                col,
-                text=mode,
-                width=100,
-                height=36,
-                font=("Arial", 13, "bold"),
+                inner, text="Select",
+                height=28, font=("Arial", 11, "bold"),
+                fg_color=C["surface2"], hover_color=C["border"],
+                text_color=C["muted"],
                 command=lambda m=mode: self._set_mode(m),
             )
             btn.pack(fill="x")
-            ctk.CTkLabel(col, text=desc, font=("Arial", 9), text_color="gray50", wraplength=120).pack(pady=(2, 0))
-            self._mode_buttons[mode] = btn
 
-        # Category toggles
-        cat_frame = ctk.CTkFrame(self, fg_color="#16213e", corner_radius=10)
-        cat_frame.pack(fill="x", padx=14, pady=4)
-        ctk.CTkLabel(
-            cat_frame, text="ALERT TYPES", font=("Arial", 11, "bold"), text_color="gray60"
-        ).pack(anchor="w", padx=14, pady=(10, 6))
+            self._mode_buttons[mode] = card
+            self._mode_btn_widgets[mode] = btn
 
-        grid = ctk.CTkFrame(cat_frame, fg_color="transparent")
-        grid.pack(padx=14, pady=(0, 12), fill="x")
+    def _build_category_section(self):
+        _section_label(self, "  ALERT TYPES")
+
+        outer = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=10,
+                             border_width=1, border_color=C["border"])
+        outer.pack(fill="x", padx=14, pady=(0, 6))
+
         self._cat_vars: dict[str, tk.BooleanVar] = {}
+        cats = list(CATEGORY_DATA.items())
 
-        cats = list(CATEGORY_LABELS.items())
-        for i, (key, (label, tooltip)) in enumerate(cats):
-            row = i // 2
-            col = i % 2
+        for i, (key, (icon, label, desc)) in enumerate(cats):
             var = tk.BooleanVar(value=True)
             self._cat_vars[key] = var
-            sw = ctk.CTkSwitch(
-                grid,
-                text=label,
-                variable=var,
-                onvalue=True,
-                offvalue=False,
+
+            row = ctk.CTkFrame(outer, fg_color="transparent")
+            row.pack(fill="x", padx=14, pady=1)
+
+            # Icono + textos
+            ctk.CTkLabel(row, text=icon, font=("Arial", 18), width=30).pack(side="left")
+            txt = ctk.CTkFrame(row, fg_color="transparent")
+            txt.pack(side="left", padx=8, expand=True, fill="x")
+            ctk.CTkLabel(txt, text=label, font=("Arial", 12, "bold"),
+                         text_color=C["text"], anchor="w").pack(anchor="w")
+            ctk.CTkLabel(txt, text=desc, font=("Arial", 10),
+                         text_color=C["muted"], anchor="w").pack(anchor="w")
+
+            ctk.CTkSwitch(
+                row, text="", variable=var, width=46,
+                onvalue=True, offvalue=False,
+                progress_color=C["green"],
                 command=lambda k=key, v=var: self._toggle_category(k, v),
-                font=("Arial", 12),
-            )
-            sw.grid(row=row, column=col, sticky="w", padx=8, pady=4)
+            ).pack(side="right")
 
-        # Action buttons
-        act_frame = ctk.CTkFrame(self, fg_color="transparent")
-        act_frame.pack(fill="x", padx=14, pady=6)
+            # Divisor entre filas (excepto la última)
+            if i < len(cats) - 1:
+                ctk.CTkFrame(outer, height=1, fg_color=C["border"]).pack(fill="x", padx=14)
+
+    def _build_action_bar(self):
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", padx=14, pady=(6, 4))
 
         ctk.CTkButton(
-            act_frame,
-            text="📷  Select Region",
+            bar, text="📷  Select Region",
+            fg_color=C["surface"], hover_color=C["surface2"],
+            border_width=1, border_color=C["border"],
+            text_color=C["text"], font=("Arial", 12),
+            height=34, width=160,
             command=self._select_region,
-            width=150,
-            fg_color="#0f3460",
-            hover_color="#16213e",
-        ).pack(side="left", padx=(0, 8))
+        ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            act_frame,
-            text="⚙  Settings",
+            bar, text="⚙  Settings",
+            fg_color=C["surface"], hover_color=C["surface2"],
+            border_width=1, border_color=C["border"],
+            text_color=C["text"], font=("Arial", 12),
+            height=34, width=110,
             command=self._open_settings,
-            width=100,
-            fg_color="#0f3460",
-            hover_color="#16213e",
         ).pack(side="left")
 
         ctk.CTkButton(
-            act_frame,
-            text="✅  ACK All",
+            bar, text="✅  ACK All",
+            fg_color=C["green_dk"], hover_color=C["green"],
+            text_color="#000", font=("Arial", 12, "bold"),
+            height=34, width=110,
             command=self._ack_all,
-            width=100,
-            fg_color="#1a5c2e",
-            hover_color="#0f3c1e",
         ).pack(side="right")
 
-        # Start/Stop button
+    def _build_start_button(self):
         self._start_btn = ctk.CTkButton(
             self,
-            text="▶  START MONITORING",
-            font=("Arial", 14, "bold"),
-            height=44,
-            fg_color="#e94560",
-            hover_color="#c73652",
+            text="▶   START MONITORING",
+            font=("Arial", 15, "bold"),
+            height=48,
+            fg_color=C["red"],
+            hover_color=C["red_dk"],
+            corner_radius=10,
             command=self._toggle_monitor,
         )
-        self._start_btn.pack(fill="x", padx=14, pady=6)
+        self._start_btn.pack(fill="x", padx=14, pady=(4, 6))
 
-        # Status bar
-        status_frame = ctk.CTkFrame(self, fg_color="#0a0a1a", corner_radius=8, height=32)
-        status_frame.pack(fill="x", padx=14, pady=(2, 4))
-        status_frame.pack_propagate(False)
-        self._status_dot = ctk.CTkLabel(status_frame, text="⏹", font=("Arial", 13), text_color="gray50")
-        self._status_dot.pack(side="left", padx=(10, 4))
-        self._status_label = ctk.CTkLabel(status_frame, text="Inactivo", font=("Arial", 12), text_color="gray60")
+    def _build_status_bar(self):
+        bar = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=8,
+                           border_width=1, border_color=C["border"], height=34)
+        bar.pack(fill="x", padx=14, pady=(0, 4))
+        bar.pack_propagate(False)
+
+        self._status_dot = ctk.CTkLabel(bar, text="●", font=("Arial", 14), text_color=C["muted"])
+        self._status_dot.pack(side="left", padx=(12, 4))
+
+        self._status_label = ctk.CTkLabel(bar, text="Inactivo",
+                                          font=("Arial", 12), text_color=C["muted"])
         self._status_label.pack(side="left")
-        self._alert_badge = ctk.CTkLabel(status_frame, text="", font=("Arial", 11, "bold"), text_color="#e94560")
-        self._alert_badge.pack(side="right", padx=10)
 
-        # Log panel
-        log_label_row = ctk.CTkFrame(self, fg_color="transparent")
-        log_label_row.pack(fill="x", padx=14)
-        ctk.CTkLabel(log_label_row, text="LIVE LOG", font=("Arial", 10, "bold"), text_color="gray50").pack(side="left")
+        self._alert_badge = ctk.CTkLabel(bar, text="", font=("Arial", 11, "bold"), text_color=C["red"])
+        self._alert_badge.pack(side="right", padx=12)
+
+    def _build_log_section(self):
+        hdr = ctk.CTkFrame(self, fg_color="transparent")
+        hdr.pack(fill="x", padx=14, pady=(2, 0))
+
+        ctk.CTkLabel(hdr, text="LIVE LOG", font=("Arial", 10, "bold"),
+                     text_color=C["muted"]).pack(side="left")
         ctk.CTkButton(
-            log_label_row, text="Clear", width=48, height=20,
-            fg_color="transparent", hover_color="gray20",
-            font=("Arial", 10), text_color="gray50",
+            hdr, text="Clear", width=44, height=18,
+            fg_color="transparent", hover_color=C["surface2"],
+            font=("Arial", 10), text_color=C["muted"],
             command=self._clear_log,
         ).pack(side="right")
 
         self._log_box = ctk.CTkTextbox(
-            self,
-            height=180,
+            self, height=160,
             font=("Consolas", 11),
-            fg_color="#0a0a1a",
-            text_color="#a0c4a0",
+            fg_color=C["surface"],
+            border_width=1, border_color=C["border"],
+            text_color="#8b949e",
+            corner_radius=8,
             activate_scrollbars=True,
             wrap="word",
         )
@@ -308,7 +434,6 @@ class MainWindow(ctk.CTk):
     def _load_state_from_config(self):
         cfg = _load_config()
         mode = cfg.get("mode", "HARD")
-        self._mode_var.set(mode)
         self._refresh_mode_buttons(mode)
 
         cats = cfg.get("categories", {})
@@ -319,24 +444,33 @@ class MainWindow(ctk.CTk):
         cfg = _load_config()
         cfg["mode"] = mode
         _save_config(cfg)
-        self._mode_var.set(mode)
         self._refresh_mode_buttons(mode)
         if self._monitor:
             self._monitor.reset_detector()
-        self._log(f"[Mode] Cambiado a {mode} ({MODE_DESCRIPTIONS[mode]})", color="gray60")
+        _, _, threshold, desc = MODE_DATA[mode]
+        self._log(f"[Mode] → {mode}  ({threshold} · {desc})", color=C["muted"])
 
     def _refresh_mode_buttons(self, active: str):
-        colors = {
-            "HARD":     ("#e94560", "#c73652"),
-            "MODERATE": ("#f5a623", "#c4841c"),
-            "SOFT":     ("#27ae60", "#1e8449"),
+        border_colors = {
+            "HARD":     C["red"],
+            "MODERATE": C["orange"],
+            "SOFT":     C["green"],
         }
-        for mode, btn in self._mode_buttons.items():
+        btn_colors = {
+            "HARD":     (C["red"],    C["red_dk"],    "#fff"),
+            "MODERATE": (C["orange"], C["orange_dk"], "#000"),
+            "SOFT":     (C["green"],  C["green_dk"],  "#000"),
+        }
+        for mode, card in self._mode_buttons.items():
+            btn = self._mode_btn_widgets[mode]
             if mode == active:
-                c, h = colors[mode]
-                btn.configure(fg_color=c, hover_color=h)
+                card.configure(border_color=border_colors[mode])
+                fg, hv, tc = btn_colors[mode]
+                btn.configure(fg_color=fg, hover_color=hv, text_color=tc, text="✓ Selected")
             else:
-                btn.configure(fg_color="#1e1e3a", hover_color="#2a2a4a")
+                card.configure(border_color=C["border"])
+                btn.configure(fg_color=C["surface2"], hover_color=C["border"],
+                              text_color=C["muted"], text="Select")
 
     def _toggle_category(self, key: str, var: tk.BooleanVar):
         cfg = _load_config()
@@ -355,11 +489,11 @@ class MainWindow(ctk.CTk):
         cfg = _load_config()
 
         if not cfg.get("capture_region"):
-            self._log("[Error] No hay región seleccionada. Pulsa 'Select Region' primero.", color="#e94560")
+            self._log("[Error] No hay región seleccionada. Pulsa 'Select Region' primero.", color=C["red"])
             return
 
         if not cfg.get("telegram", {}).get("token"):
-            self._log("[Aviso] Token de Telegram no configurado. Ve a Settings.", color="#f5a623")
+            self._log("[Aviso] Token de Telegram no configurado. Ve a Settings.", color=C["orange"])
 
         # Inicializar notifier y alert manager
         self._notifier = Notifier()
@@ -384,9 +518,9 @@ class MainWindow(ctk.CTk):
         )
         self._monitor.start()
 
-        self._start_btn.configure(text="⏹  STOP MONITORING", fg_color="#555", hover_color="#444")
+        self._start_btn.configure(text="⏹   STOP MONITORING", fg_color=C["surface2"], hover_color=C["border"])
         self._tray.update_monitoring_state(True)
-        self._log("[Monitor] Iniciado. Capturando cada 5s...", color="#27ae60")
+        self._log("[Monitor] Iniciado. Capturando cada 5s...", color=C["green"])
 
     def _stop_monitor(self):
         if self._monitor:
@@ -396,23 +530,23 @@ class MainWindow(ctk.CTk):
             self._alert_manager.stop()
 
         self._start_btn.configure(
-            text="▶  START MONITORING", fg_color="#e94560", hover_color="#c73652"
+            text="▶   START MONITORING", fg_color=C["red"], hover_color=C["red_dk"]
         )
         self._tray.update_monitoring_state(False)
         self._set_status("Detenido", ok=False)
-        self._log("[Monitor] Detenido.", color="gray60")
+        self._log("[Monitor] Detenido.", color=C["muted"])
 
     def _ack_all(self):
         if self._alert_manager:
             count = self._alert_manager.acknowledge_all()
-            self._log(f"[ACK] {count} alerta(s) confirmada(s).", color="#27ae60")
+            self._log(f"[ACK] {count} alerta(s) confirmada(s).", color=C["green"])
             self._update_alert_badge(0)
             self._tray.update_alert_count(0)
 
     # ── CALLBACKS DEL MONITOR THREAD ─────────────────────────────────────────
 
     def _on_log_line(self, line: str):
-        self.after(0, lambda: self._log(f"> {line}", color="#a0c4a0"))
+        self.after(0, lambda: self._log(f"  {line}"))
 
     def _on_alert(self, alert: Alert):
         def _handle():
@@ -422,16 +556,12 @@ class MainWindow(ctk.CTk):
                 self._update_alert_badge(count)
                 self._tray.update_alert_count(count)
                 self._tray.notify(
-                    f"⚠ ARK - {alert.category.value}",
+                    f"ARK — {alert.category.value}",
                     alert.text[:100],
                 )
-            color_map = {
-                "CRITICAL": "#e94560",
-                "WARNING": "#f5a623",
-            }
-            color = color_map.get(alert.severity, "#e94560")
+            color = C["red"] if alert.severity == "CRITICAL" else C["orange"]
             icon = alert.category_icon()
-            self._log(f"{icon} [{alert.severity}] {alert.category.value}: {alert.text}", color=color)
+            self._log(f"{icon}  {alert.category.value.upper()}  ·  {alert.text}", color=color)
         self.after(0, _handle)
 
     def _on_status(self, msg: str, ok: bool):
@@ -439,24 +569,22 @@ class MainWindow(ctk.CTk):
 
     def _on_cycle(self, cycle: int):
         self._cycle = cycle
-        if cycle % 10 == 0:
-            self.after(0, lambda: self._set_status(f"Monitorizando... ciclo #{cycle}", ok=True))
+        self.after(0, lambda: self._set_status(f"Monitoring  ·  cycle #{cycle}", ok=True))
 
     # ── UI HELPERS ────────────────────────────────────────────────────────────
 
     def _set_status(self, msg: str, ok: bool):
-        dot = "🟢" if ok else "⏹"
-        color = "#27ae60" if ok else "gray50"
-        self._status_dot.configure(text=dot)
+        color = C["green"] if ok else C["muted"]
+        self._status_dot.configure(text_color=color)
         self._status_label.configure(text=msg, text_color=color)
 
     def _update_alert_badge(self, count: int):
         if count > 0:
-            self._alert_badge.configure(text=f"🔴 {count} ALERT(S)")
+            self._alert_badge.configure(text=f"⚠  {count} UNACK")
         else:
             self._alert_badge.configure(text="")
 
-    def _log(self, text: str, color: str = "#a0c4a0"):
+    def _log(self, text: str, color: str = "#8b949e"):
         def _insert():
             self._log_box.configure(state="normal")
             ts = datetime.now().strftime("%H:%M:%S")
@@ -484,16 +612,16 @@ class MainWindow(ctk.CTk):
         region = select_region()
         self.deiconify()
         if region:
-            self._log(f"[Region] Seleccionada: {region}", color="#27ae60")
+            self._log(f"[Region] Seleccionada: {region}", color=C["green"])
         else:
-            self._log("[Region] Selección cancelada.", color="gray60")
+            self._log("[Region] Selección cancelada.", color=C["muted"])
 
     def _open_settings(self):
         dialog = SettingsDialog(self)
         self.wait_window(dialog)
         if self._notifier:
             self._notifier.reload_config()
-        self._log("[Settings] Configuración guardada.", color="gray60")
+        self._log("[Settings] Configuración guardada.", color=C["muted"])
 
     # ── WINDOW / TRAY ─────────────────────────────────────────────────────────
 
