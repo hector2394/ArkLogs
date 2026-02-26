@@ -69,8 +69,8 @@ class AlertManager:
     def get_active_summary(self) -> str:
         with self._lock:
             if not self._active_alerts:
-                return "No hay alertas activas."
-            lines = [f"Alertas activas ({len(self._active_alerts)}):"]
+                return "No active alerts."
+            lines = [f"Active alerts ({len(self._active_alerts)}):"]
             for a in self._active_alerts.values():
                 lines.append(f"  [{a.id}] {a.category.value}: {a.text[:60]}...")
             return "\n".join(lines)

@@ -96,11 +96,39 @@ class Alert:
         )
 
     def format_ntfy_title(self) -> str:
-        icon = self.category_icon()
-        return f"{icon} ARK - {self.category.value}"
+        titles = {
+            AlertCategory.RAID:         "BASE UNDER ATTACK",
+            AlertCategory.DINOS_KILLED: "DINOS BEING KILLED",
+            AlertCategory.STARVING:     "DINOS STARVING",
+            AlertCategory.INSIDING:     "INSIDER THREAT DETECTED",
+            AlertCategory.PLAYER_KILLED:"TRIBE MEMBER DOWN",
+        }
+        title = titles.get(self.category, "ARK ALERT")
+        if self.send_count > 0:
+            return f"[STILL ACTIVE x{self.send_count + 1}] {title}"
+        return title
 
     def format_ntfy_message(self) -> str:
-        return f"[{self.timestamp}] {self.text}"
+        summaries = {
+            AlertCategory.RAID:
+                "Your base is being raided right now! Structures are being destroyed.",
+            AlertCategory.DINOS_KILLED:
+                "Your tamed dinos are under attack and being killed!",
+            AlertCategory.STARVING:
+                "Your dinos are dying of starvation. Log in to feed them!",
+            AlertCategory.INSIDING:
+                "Suspicious activity in your tribe — possible insider threat!",
+            AlertCategory.PLAYER_KILLED:
+                "A tribe member has been killed. Your base may be under attack!",
+        }
+        summary = summaries.get(self.category, "Alert detected in your tribe log!")
+        if self.send_count > 0:
+            return (
+                f"Reminder #{self.send_count + 1} — Alert not dismissed yet!\n"
+                f"{summary}\n\n"
+                f"Open ARK Raid Monitor and tap Dismiss All to stop these alerts."
+            )
+        return f"{summary}\n\nDetected at {self.timestamp} — Open ARK Raid Monitor for details."
 
 
 def _load_config() -> dict:

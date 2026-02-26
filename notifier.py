@@ -83,7 +83,7 @@ class Notifier:
 
     def _send_telegram(self, alert: Alert):
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Confirmar / ACK", callback_data=f"ack_{alert.id}")]
+            [InlineKeyboardButton("✅ Dismiss — Stop alerts", callback_data=f"ack_{alert.id}")]
         ])
         for chat_id in self._tg_chat_ids:
             try:
@@ -146,7 +146,7 @@ def start_telegram_bot(notifier: Notifier, alert_manager):
 
     def cmd_ack(update, context):
         count = alert_manager.acknowledge_all()
-        msg = f"✅ {count} alerta(s) confirmada(s). El spam para." if count else "No había alertas activas."
+        msg = f"✅ {count} alert(s) dismissed. No more notifications." if count else "No active alerts."
         update.message.reply_text(msg)
 
     def cmd_status(update, context):
@@ -168,9 +168,9 @@ def start_telegram_bot(notifier: Notifier, alert_manager):
         found = alert_manager.acknowledge_by_id(alert_id)
         if not found:
             alert_manager.acknowledge_all()
-        query.answer("✅ Confirmado.")
+        query.answer("✅ Dismissed.")
         try:
-            query.edit_message_text("✅ Alerta confirmada. El spam para.")
+            query.edit_message_text("✅ Alert dismissed. No more notifications for this event.")
         except Exception:
             pass
 
