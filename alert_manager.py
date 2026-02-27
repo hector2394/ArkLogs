@@ -85,6 +85,9 @@ class AlertManager:
                 pending = list(self._active_alerts.values())
 
             if pending:
+                if len(pending) == 1:
+                    self.notifier.send_alert(pending[0])
+                else:
+                    self.notifier.send_resend_summary(pending)
                 for alert in pending:
-                    self.notifier.send_alert(alert)
                     alert.send_count += 1

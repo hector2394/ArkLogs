@@ -505,7 +505,7 @@ class MainWindow(ctk.CTk):
         if not self._bot_started and cfg.get("telegram", {}).get("token"):
             threading.Thread(
                 target=start_telegram_bot,
-                args=(self._notifier, self._alert_manager),
+                args=(self._notifier,),
                 daemon=True,
             ).start()
             self._bot_started = True

@@ -6,7 +6,6 @@ import json
 import os
 import requests
 import threading
-from urllib.parse import quote
 from alert_detector import Alert
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
@@ -83,7 +82,7 @@ class Notifier:
 
     def _send_telegram(self, alert: Alert):
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Dismiss — Stop alerts", callback_data=f"ack_{alert.id}")]
+            [InlineKeyboardButton("✅  Dismiss All — Stop alerts", callback_data="ack_all")]
         ])
         for chat_id in self._tg_chat_ids:
             try:
@@ -96,10 +95,63 @@ class Notifier:
             except Exception as e:
                 print(f"[Notifier] Error Telegram {chat_id}: {e}")
 
+    def send_resend_summary(self, alerts: list):
+        """Sends a single consolidated reminder when multiple alerts are still active."""
+        reminder_num = max(a.send_count for a in alerts) + 1
+        categories = [a.category.value for a in alerts]
+        threading.Thread(
+            target=self._send_ntfy_summary, args=(categories, reminder_num), daemon=True
+        ).start()
+        if self._tg_bot and self._tg_chat_ids:
+            threading.Thread(
+                target=self._send_telegram_summary, args=(alerts, reminder_num), daemon=True
+            ).start()
+
+    def _send_ntfy_summary(self, categories: list, reminder_num: int):
+        url = f"{self._ntfy_server}/{self._ntfy_topic}"
+        title = f"[STILL ACTIVE x{reminder_num}] {len(categories)} alert(s) ongoing"
+        body_lines = [f"Reminder #{reminder_num} — Alerts not dismissed yet!", ""]
+        for cat in categories:
+            body_lines.append(f"  • {cat}")
+        body_lines += ["", "Open ARK Raid Monitor and tap Dismiss All to stop."]
+        headers = {
+            "Title": title,
+            "Priority": self._ntfy_priority,
+            "Tags": "rotating_light,skull",
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        if self._ntfy_token:
+            headers["Authorization"] = f"Bearer {self._ntfy_token}"
+        try:
+            requests.post(
+                url,
+                data="\n".join(body_lines).encode("utf-8"),
+                headers=headers,
+                timeout=10,
+            )
+        except Exception as e:
+            print(f"[Notifier] Error ntfy summary: {e}")
+
+    def _send_telegram_summary(self, alerts: list, reminder_num: int):
+        lines = [f"🔁 *REMINDER #{reminder_num}* — Alerts still active!\n"]
+        for a in alerts:
+            lines.append(f"{a.category_icon()} {a.category.value}")
+        text = "\n".join(lines)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅  Dismiss All — Stop alerts", callback_data="ack_all")]
+        ])
+        for chat_id in self._tg_chat_ids:
+            try:
+                self._tg_bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard
+                )
+            except Exception as e:
+                print(f"[Notifier] Error Telegram summary {chat_id}: {e}")
+
     def _send_ntfy(self, alert: Alert):
         url = f"{self._ntfy_server}/{self._ntfy_topic}"
         headers = {
-            "Title": quote(alert.format_ntfy_title()),
+            "Title": alert.format_ntfy_title(),
             "Priority": self._ntfy_priority,
             "Tags": "rotating_light,skull",
             "Content-Type": "text/plain; charset=utf-8",
@@ -117,9 +169,10 @@ class Notifier:
             print(f"[Notifier] Error ntfy: {e}")
 
 
-def start_telegram_bot(notifier: Notifier, alert_manager):
+def start_telegram_bot(notifier: Notifier):
     """
     Arranca el polling del bot de Telegram en thread daemon.
+    Usa notifier._alert_manager para acceder siempre al manager activo.
     """
     if not TELEGRAM_AVAILABLE:
         return
@@ -134,23 +187,35 @@ def start_telegram_bot(notifier: Notifier, alert_manager):
     updater = Updater(token=token)
     dp = updater.dispatcher
 
+    def _am():
+        """Devuelve el AlertManager activo en este momento."""
+        return notifier._alert_manager
+
     def cmd_start(update, context):
         chat_id = update.effective_chat.id
         update.message.reply_text(
-            f"✅ *ARK Raid Monitor* activo\n\nTu chat\\_id: `{chat_id}`\n\n"
-            "/ack — Confirmar todas las alertas\n"
-            "/status — Ver alertas activas\n"
-            "/test — Enviar notificación de prueba",
+            f"✅ *ARK Raid Monitor* active\n\nYour chat\\_id: `{chat_id}`\n\n"
+            "/ack — Dismiss all active alerts\n"
+            "/status — Show active alerts\n"
+            "/test — Send a test notification",
             parse_mode="Markdown",
         )
 
     def cmd_ack(update, context):
-        count = alert_manager.acknowledge_all()
+        am = _am()
+        if am is None:
+            update.message.reply_text("Monitor is not running.")
+            return
+        count = am.acknowledge_all()
         msg = f"✅ {count} alert(s) dismissed. No more notifications." if count else "No active alerts."
         update.message.reply_text(msg)
 
     def cmd_status(update, context):
-        update.message.reply_text(alert_manager.get_active_summary())
+        am = _am()
+        if am is None:
+            update.message.reply_text("Monitor is not running.")
+            return
+        update.message.reply_text(am.get_active_summary())
 
     def cmd_test(update, context):
         from alert_detector import Alert, AlertCategory
@@ -160,17 +225,18 @@ def start_telegram_bot(notifier: Notifier, alert_manager):
             severity="CRITICAL",
         )
         notifier.send_alert(test_alert)
-        update.message.reply_text("✅ Notificación de prueba enviada.")
+        update.message.reply_text("✅ Test notification sent.")
 
     def callback_ack(update, context):
         query = update.callback_query
-        alert_id = query.data.replace("ack_", "")
-        found = alert_manager.acknowledge_by_id(alert_id)
-        if not found:
-            alert_manager.acknowledge_all()
-        query.answer("✅ Dismissed.")
+        am = _am()
+        if am is None:
+            query.answer("Monitor not running.")
+            return
+        am.acknowledge_all()
+        query.answer("✅ All alerts dismissed.")
         try:
-            query.edit_message_text("✅ Alert dismissed. No more notifications for this event.")
+            query.edit_message_text("✅ All alerts dismissed. No more notifications.")
         except Exception:
             pass
 

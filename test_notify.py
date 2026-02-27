@@ -14,10 +14,11 @@ Press Ctrl+C to stop (simulates Dismiss All).
 """
 
 import sys
+import threading
 import time
 from alert_detector import Alert, AlertCategory
 from alert_manager import AlertManager
-from notifier import Notifier
+from notifier import Notifier, start_telegram_bot
 
 TESTS = {
     "raid": Alert(
@@ -76,7 +77,11 @@ def main():
 
     # Full AlertManager loop — keeps resending until Ctrl+C
     manager = AlertManager(notifier)
+    notifier.set_alert_manager(manager)
     manager.start()
+
+    # Arrancar bot de Telegram para que funcionen /ack y el botón Dismiss All
+    threading.Thread(target=start_telegram_bot, args=(notifier,), daemon=True).start()
 
     for key in keys:
         alert = TESTS[key]
