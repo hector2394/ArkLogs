@@ -1,0 +1,30 @@
+{
+  "check_interval": 5,
+  "capture_region": null,
+  "mode": "HARD",
+  "categories": {
+    "raid": true,
+    "dinos_killed": true,
+    "starving": true,
+    "insiding": true,
+    "player_killed": true
+  },
+  "insiding": {
+    "demolition_count": 3,
+    "demolition_window_minutes": 2,
+    "unclaim_count": 5,
+    "unclaim_window_minutes": 2
+  },
+  "telegram": {
+    "token": "",
+    "chat_ids": []
+  },
+  "ntfy": {
+    "server": "https://ntfy.sh",
+    "topic": "",
+    "priority": "urgent",
+    "token": ""
+  },
+  "resend_interval": 30,
+  "tesseract_path": ""
+}

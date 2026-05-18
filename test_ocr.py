@@ -8,21 +8,17 @@ Uso:
 """
 
 import sys
-import json
-import os
 from screen_capture import capture_region, select_region
 from ocr_engine import extract_text
-from alert_detector import detect_alerts
+from alert_detector import AlertDetector
+from config_store import load_config
 from log_parser import parse_new_lines
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 
 def main():
     print("=== ArkLogs - Test de OCR ===\n")
 
-    with open(CONFIG_PATH, "r") as f:
-        cfg = json.load(f)
+    cfg = load_config()
 
     if "--select" in sys.argv or not cfg.get("capture_region"):
         print("Selecciona la región del tribe log...")
@@ -54,7 +50,7 @@ def main():
             print(f"  > {line}")
 
         print()
-        alerts = detect_alerts(new_lines)
+        alerts = AlertDetector().process_lines(new_lines)
         if alerts:
             print(f"⚠️  ALERTAS DETECTADAS: {len(alerts)}")
             for a in alerts:

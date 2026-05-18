@@ -7,22 +7,17 @@ from tkinter import messagebox
 import mss
 import mss.tools
 from PIL import Image
-import json
-import os
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config as load_app_config, save_config
 
 
 def load_config():
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    return load_app_config()
 
 
 def save_region(region: dict):
     config = load_config()
     config["capture_region"] = region
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(config, f, indent=2)
+    save_config(config)
     print(f"[Region] Guardada: {region}")
 
 

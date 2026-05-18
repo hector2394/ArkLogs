@@ -2,13 +2,10 @@
 notifier.py - Envío de notificaciones via Telegram y ntfy.sh
 """
 
-import json
-import os
 import requests
 import threading
 from alert_detector import Alert
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config
 
 try:
     import telegram
@@ -19,8 +16,7 @@ except ImportError:
 
 
 def _load_config() -> dict:
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    return load_config()
 
 
 class Notifier:

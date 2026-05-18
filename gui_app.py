@@ -2,8 +2,6 @@
 gui_app.py - Ventana principal de ARK Raid Monitor (customtkinter)
 """
 
-import json
-import os
 import threading
 import tkinter as tk
 from datetime import datetime
@@ -12,12 +10,11 @@ import customtkinter as ctk
 
 from alert_detector import Alert, AlertCategory
 from alert_manager import AlertManager
+from config_store import load_config, save_config
 from monitor_thread import MonitorThread
 from notifier import Notifier, start_telegram_bot
 from screen_capture import select_region
 from tray_icon import TrayIcon
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -59,13 +56,11 @@ MAX_LOG_LINES = 200
 
 
 def _load_config() -> dict:
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    return load_config()
 
 
 def _save_config(cfg: dict):
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    save_config(cfg)
 
 
 def _section_label(parent, text: str):

@@ -4,17 +4,13 @@ alert_manager.py - Gestiona el ciclo de vida de las alertas y los re-envíos
 
 import threading
 import time
-import json
-import os
 from alert_detector import Alert
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config
 
 
 def _get_resend_interval() -> int:
     try:
-        with open(CONFIG_PATH, "r") as f:
-            cfg = json.load(f)
+        cfg = load_config()
         return int(cfg.get("resend_interval", 30))
     except Exception:
         return 30

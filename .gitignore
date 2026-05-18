@@ -1,0 +1,30 @@
+# Local configuration and runtime state
+config.json
+seen_lines.json
+test_capture.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Packaging
+build/
+dist/
+*.spec~
+*.manifest
+
+# PyInstaller
+*.exe
+
+# IDE and assistant-local files
+.vscode/
+.idea/
+.claude/
+
+# OS noise
+.DS_Store
+Thumbs.db

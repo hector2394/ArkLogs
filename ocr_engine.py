@@ -4,16 +4,13 @@ ocr_engine.py - Extracción de texto de capturas de pantalla usando Tesseract OC
 
 import pytesseract
 from PIL import Image, ImageFilter, ImageEnhance
-import json
 import os
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config
 
 
 def _load_tesseract_path():
     try:
-        with open(CONFIG_PATH, "r") as f:
-            cfg = json.load(f)
+        cfg = load_config()
         path = cfg.get("tesseract_path", "")
         if path and os.path.exists(path):
             pytesseract.pytesseract.tesseract_cmd = path

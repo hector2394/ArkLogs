@@ -5,20 +5,16 @@ Ejecuta el loop captura→OCR→parse→detect y notifica a la GUI via callbacks
 
 import threading
 import time
-import json
-import os
 
 from screen_capture import capture_region
 from ocr_engine import extract_text
 from log_parser import parse_new_lines
 from alert_detector import AlertDetector, Alert
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config
 
 
 def _load_config() -> dict:
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    return load_config()
 
 
 class MonitorThread(threading.Thread):

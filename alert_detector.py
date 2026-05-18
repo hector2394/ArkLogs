@@ -2,16 +2,13 @@
 alert_detector.py - Detección de eventos de ataque con categorías, modos y lógica de insiding
 """
 
-import json
-import os
 import uuid
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
+from config_store import load_config
 
 MODE_THRESHOLDS = {
     "HARD": 1,
@@ -132,11 +129,7 @@ class Alert:
 
 
 def _load_config() -> dict:
-    try:
-        with open(CONFIG_PATH, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    return load_config()
 
 
 class AlertDetector:

@@ -2,6 +2,8 @@
 # Uso: pyinstaller build.spec
 
 import os
+from PyInstaller.utils.hooks import collect_data_files
+
 block_cipher = None
 
 a = Analysis(
@@ -9,8 +11,8 @@ a = Analysis(
     pathex=[os.path.abspath('.')],
     binaries=[],
     datas=[
-        ('config.json', '.'),
-    ],
+        ('config.example.json', '.'),
+    ] + collect_data_files('customtkinter'),
     hiddenimports=[
         'customtkinter',
         'pystray',
@@ -35,13 +37,6 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-
-# Incluir archivos de customtkinter (temas, fuentes)
-import customtkinter
-ctk_path = os.path.dirname(customtkinter.__file__)
-a.datas += [(os.path.join(ctk_path, f), os.path.join('customtkinter', f))
-            for f in os.listdir(ctk_path)
-            if os.path.isfile(os.path.join(ctk_path, f))]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
