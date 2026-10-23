@@ -136,4 +136,4 @@ If secrets exist in history, clean the history with a tool such as `git filter-r
 
 ## License
 
-No license has been declared yet. Add one before accepting external contributions or distributing public releases.
+This project is licensed under the [MIT License](LICENSE).
