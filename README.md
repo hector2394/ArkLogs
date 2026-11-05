@@ -34,7 +34,7 @@ Install Tesseract OCR from the official installer or your preferred package sour
 Clone the repository and create a virtual environment:
 
 ```powershell
-git clone https://github.com/hectorjimenezpalomo/ArkLogs.git
+git clone https://github.com/hector2394/ArkLogs.git
 cd ArkLogs
 py -3.11 -m venv .venv
 .\.venv\Scripts\activate
