@@ -8,6 +8,7 @@ import os
 import hashlib
 
 SEEN_PATH = os.path.join(os.path.dirname(__file__), "seen_lines.json")
+MAX_SEEN_LINES = 500
 
 # Formato típico ARK tribe log:
 # "Day 123, 15:30:45: Your Dino - Lvl 5 was killed by PlayerName!"
@@ -18,20 +19,19 @@ ARK_LOG_PATTERN = re.compile(
 )
 
 
-def _load_seen() -> set:
+def _load_seen() -> dict[str, None]:
     if not os.path.exists(SEEN_PATH):
-        return set()
+        return {}
     try:
         with open(SEEN_PATH, "r") as f:
             data = json.load(f)
-        return set(data)
+        return dict.fromkeys(data)
     except Exception:
-        return set()
+        return {}
 
 
-def _save_seen(seen: set):
-    # Solo guardamos los últimos 500 hashes para no crecer infinitamente
-    seen_list = list(seen)[-500:]
+def _save_seen(seen: dict[str, None]) -> None:
+    seen_list = list(seen)[-MAX_SEEN_LINES:]
     with open(SEEN_PATH, "w") as f:
         json.dump(seen_list, f)
 
@@ -60,7 +60,7 @@ def parse_new_lines(raw_text: str) -> list[str]:
 
         h = _hash_line(line)
         if h not in seen:
-            seen.add(h)
+            seen[h] = None
             new_lines.append(line)
 
     _save_seen(seen)
