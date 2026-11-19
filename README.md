@@ -76,6 +76,12 @@ The app captures the selected screen region, extracts text with Tesseract, filte
 
 ## Testing
 
+Run the offline parser tests:
+
+```powershell
+python -m unittest -v test_log_parser
+```
+
 Send test notifications:
 
 ```powershell
